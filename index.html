@@ -1707,3 +1707,251 @@
             }
 
             // GitHub Fetch Logic para Hinário
+            async function loadHymnList(autoLoad = true) {
+                var folderKey = document.getElementById('folderSelect').value;
+                var select = document.getElementById('hymnSelect');
+                var fSelLoad = document.getElementById('hymnSelectFocus');
+                
+                select.innerHTML = '<option value="">📖 Carregando...</option>';
+                if (fSelLoad) fSelLoad.innerHTML = '<option value="">📖 Carregando...</option>';
+
+                var githubApiUrl = folderLinks[folderKey];
+                
+                if (!githubApiUrl || githubApiUrl.trim() === "") {
+                    select.innerHTML = '<option value="">⚠️ Em breve...</option>';
+                    if (fSelLoad) fSelLoad.innerHTML = '<option value="">⚠️ Em breve...</option>';
+                    return;
+                }
+
+                try {
+                    var response = await fetch(githubApiUrl);
+
+                    if (!response.ok) {
+                        if (response.status === 404) throw new Error('Pasta não encontrada (404)');
+                        if (response.status === 403) throw new Error('Limite de acesso excedido (403)');
+                        throw new Error('Erro ' + response.status);
+                    }
+                    var data = await response.json();
+
+                    select.innerHTML = '<option value="">📖 Hino...</option>';
+
+                    var hinosEncontrados = 0;
+                    data.forEach(function (file) {
+                        if (file.type === 'file' && (file.name.endsWith('.xml') || file.name.endsWith('.musicxml') || file.name.endsWith('.mxl'))) {
+                            var opt = document.createElement('option');
+                            opt.value = file.download_url;
+                            opt.textContent = file.name.replace(/\.[^/.]+$/, "");
+                            select.appendChild(opt);
+                            hinosEncontrados++;
+                        }
+                    });
+
+                    if (fSelLoad) {
+                        fSelLoad.innerHTML = '';
+                        for (var ki = 0; ki < select.options.length; ki++) {
+                            fSelLoad.appendChild(select.options[ki].cloneNode(true));
+                        }
+                    }
+
+                    if (hinosEncontrados === 0) {
+                        select.options[0].textContent = "⚠️ Nenhum XML na pasta";
+                        if (fSelLoad) fSelLoad.options[0].textContent = "⚠️ Nenhum XML";
+                    } else if (autoLoad && select.options.length > 1) {
+                        // Carrega automaticamente o primeiro hino da lista ao mudar a pasta
+                        select.selectedIndex = 1;
+                        select.dispatchEvent(new Event('change'));
+                    }
+                } catch (e) {
+                    console.warn('Não foi possível carregar a lista de hinos:', e);
+                    select.innerHTML = '<option value="">⚠️ Erro API</option>';
+                    if (fSelLoad) fSelLoad.innerHTML = '<option value="">⚠️ Erro API</option>';
+                }
+            }
+
+            document.getElementById('folderSelect').addEventListener('change', function() {
+                var fSelFocus = document.getElementById('folderSelectFocus');
+                if (fSelFocus) fSelFocus.value = this.value;
+                
+                // Ajusta a transposição baseado na pasta
+                var transpoValue = folderTranspositions[this.value] || 0;
+                document.getElementById('transpoInp').value = transpoValue;
+
+                loadHymnList(true);
+            });
+
+            document.getElementById('folderSelectFocus').addEventListener('change', function() {
+                var mainSel = document.getElementById('folderSelect');
+                mainSel.value = this.value;
+                mainSel.dispatchEvent(new Event('change'));
+            });
+
+            document.getElementById('hymnSelect').addEventListener('change', async function () {
+                if (!this.value) return;
+                currentHymnIndex = this.selectedIndex;
+                var url = this.value;
+                var name = this.options[this.selectedIndex].text;
+                document.getElementById('fname').textContent = "Carregando " + name + "...";
+                await loadFromUrl(url, name);
+                this.value = ""; 
+                var fSelChg = document.getElementById('hymnSelectFocus');
+                if (fSelChg) fSelChg.value = "";
+            });
+
+            document.getElementById('hymnSelectFocus').addEventListener('change', function () {
+                if (!this.value) return;
+                var mainSel = document.getElementById('hymnSelect');
+                mainSel.value = this.value;
+                mainSel.dispatchEvent(new Event('change'));
+            });
+
+            document.getElementById('btnNextHymn').onclick = function () {
+                var select = document.getElementById('hymnSelect');
+                if (select.options.length <= 1) return;
+                var next = currentHymnIndex + 1;
+                if (next >= select.options.length) next = 1; 
+                select.selectedIndex = next;
+                select.dispatchEvent(new Event('change'));
+            };
+
+            document.getElementById('btnPrevHymn').onclick = function () {
+                var select = document.getElementById('hymnSelect');
+                if (select.options.length <= 1) return;
+                var prev = currentHymnIndex - 1;
+                if (prev <= 0) prev = select.options.length - 1; 
+                select.selectedIndex = prev;
+                select.dispatchEvent(new Event('change'));
+            };
+
+
+            document.getElementById('bp').onclick = async function () {
+                if (!partInsts.length || !ac) return;
+                if (run) {
+                    stopPlayback();
+                } else {
+                    run = true;
+                    updatePlayButtonUI(true);
+                    var startT = getRangeStartTime();
+                    await scheduleFrom(startT); startCursorFollow(startT); pat = 0;
+                }
+            };
+
+            document.getElementById('reverbAmt').oninput = function () { updateReverb(); };
+
+            document.getElementById('zoomInp').onchange = function () {
+                if (!rawXml) return;
+                osmd.Zoom = (+this.value || 100) / 100; osmd.render();
+            };
+
+            document.getElementById('bpm').onchange = function () {
+                if (!rawXml) return;
+                if (run) stopPlayback();
+                buildMeasureTimeMap();
+            };
+
+            document.getElementById('bpmRedCheck').onchange = function () {
+                if (!rawXml || !originalXmlBpm) return;
+                var reduce = this.checked;
+                document.getElementById('bpm').value = reduce ? Math.max(20, originalXmlBpm - 30) : originalXmlBpm;
+                document.getElementById('bpm').dispatchEvent(new Event('change'));
+            };
+
+            document.getElementById('cursorMode').onchange = function () {
+                if (!rawXml) return;
+                var mode = +this.value;
+                if (osmd && osmd.cursor) {
+                    if (mode === -1) osmd.cursor.hide();
+                    else { osmd.cursor.cursorOptions.type = mode; osmd.cursor.show(); }
+                }
+                cursorStepsCache.mode = null;
+                moveCursorToTime(run ? Math.max(0, ac.currentTime - sat) : (pat || 0));
+            };
+
+            document.getElementById('instSelect').onchange = function () {
+                if (run) stopPlayback();
+                var newProg = this.value;
+                partConfigs.forEach(function (cfg) { cfg.program = newProg; });
+                loadAllInstruments();
+            };
+
+            document.getElementById('guidePartSelect').onchange = function () {
+                updatePartMix();
+            };
+
+            /* ─── Modo Foco ─── */
+            function toggleFocusMode() {
+                var isFocus = document.body.classList.toggle('focus-mode');
+                if (rawXml) {
+                    var currentZoom = +document.getElementById('zoomInp').value || 100;
+
+                    if (isFocus) {
+                        if (window.innerWidth < 768) {
+                            osmd.Zoom = 0.5; 
+                        } else if (currentZoom < 120) {
+                            osmd.Zoom = 1.25; 
+                        } else {
+                            osmd.Zoom = currentZoom / 100;
+                        }
+                    } else {
+                        osmd.Zoom = currentZoom / 100;
+                    }
+
+                    setTimeout(function () {
+                        osmd.render();
+                    }, 100);
+                }
+            }
+
+            document.getElementById('btnFocus').onclick = toggleFocusMode;
+            document.getElementById('btnExitFocus').onclick = toggleFocusMode;
+
+            document.getElementById('btnSolo').onclick = function () {
+                soloActive = !soloActive;
+                this.classList.toggle('active', soloActive);
+                updatePartMix();
+            };
+
+            /* ─── Painel Bluetooth ─── */
+            (function () {
+                var panel = document.getElementById('btDelayPanel');
+                var btn = document.getElementById('btnBluetooth');
+                var slider = document.getElementById('btDelaySlider');
+                var valueLabel = document.getElementById('btDelayValue');
+
+                function updateSliderTrack() {
+                    var pct = (slider.value / slider.max) * 100;
+                    slider.style.setProperty('--pct', pct + '%');
+                }
+
+                btn.onclick = function () {
+                    var isOpen = panel.classList.toggle('visible');
+                    btn.classList.toggle('active', isOpen);
+                };
+
+                slider.oninput = function () {
+                    btDelayMs = parseInt(this.value);
+                    valueLabel.textContent = btDelayMs + ' ms';
+                    updateSliderTrack();
+                    try { localStorage.setItem('btDelayMs', btDelayMs); } catch(_) {}
+                };
+
+                try {
+                    var saved = localStorage.getItem('btDelayMs');
+                    if (saved !== null) {
+                        btDelayMs = parseInt(saved) || 0;
+                        slider.value = btDelayMs;
+                        valueLabel.textContent = btDelayMs + ' ms';
+                    }
+                } catch(_) {}
+                updateSliderTrack();
+            })();
+
+            // Inicializar o primeiro hino (com ajuste manual de transposição inicial se necessário)
+            document.getElementById('transpoInp').value = folderTranspositions[document.getElementById('folderSelect').value] || 0;
+            loadFromUrl('https://raw.githubusercontent.com/GlauberLASantiago/dedo-de-violinista/main/Violinos/001_1%C2%AAM_ad_Vln.mxl');
+            loadHymnList(false);
+
+        })();
+    </script>
+</body>
+
+</html>
