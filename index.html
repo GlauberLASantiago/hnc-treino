@@ -710,6 +710,7 @@
                                 <option value="Sax_alto">Sax alto</option>
                                 <option value="Sax_tenor">Sax tenor</option>
                                 <option value="Clarinete_na_regiao_aguda">Clarinete</option>
+                                <option value="Flautas">Flautas</option>
                             </select>
                             <svg class="icon-svg" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); pointer-events: none; width: 12px; height: 12px; color: #fff;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </div>
@@ -754,6 +755,7 @@
                         <option value="Sax_alto">Sax alto</option>
                         <option value="Sax_tenor">Sax tenor</option>
                         <option value="Clarinete_na_regiao_aguda">Clarinete na região aguda</option>
+                        <option value="Flautas">Flautas</option>
                     </select>
                     <svg class="icon-svg" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; width: 14px; height: 14px; color: #fff;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
@@ -852,8 +854,8 @@
                 <div class="cursor-wrap">
                     <label for="instSelect">Som</label>
                     <select id="instSelect" title="Escolher o som dos instrumentos">
-                        <option value="violin" selected>Violino</option>
                         <option value="acoustic_grand_piano">Piano</option>
+                        <option value="string_ensemble_1" selected>Cordas</option>
                     </select>
                 </div>
 
@@ -909,7 +911,7 @@
                 iniciar com uma contagem de 2 compassos (para dar tempo de você se preparar);
                 estar com o metrônomo ligado;
                 tocar em loop (para você poder praticar várias vezes sem parar);
-                utilizar som de violino (e não o de piano); e
+                utilizar som de cordas; e
                 reproduzir todos os instrumentos (e não em solo). Se for utilizar dispositivos Bluetooth e tiver com atraso no áudio, utilize o botão específico para calibrar.</p>
             <p style="margin-top:12px;">Depois, você pode alterar todas essas configurações de acordo com sua preferência.</p>
             <p style="margin-top:12px;">Para visualizar melhor a partitura e ocultar os controles extras, clique no botão <b>"Foco"</b>.</p>
@@ -968,10 +970,11 @@
                 "Violinos": "https://api.github.com/repos/GlauberLASantiago/dedo-de-violinista/contents/Violinos",
                 "Violas": "",
                 "Instrumentos_em_do": "",
-                "Instrumentos_em_Sib": "",
-                "Sax_alto": "",
+                "Instrumentos_em_Sib": "https://api.github.com/repos/GlauberLASantiago/dedo-de-trompetista/contents/Instrumentos-Bb",
+                "Sax_alto": "https://api.github.com/repos/GlauberLASantiago/dedo-de-saxofonista-alto/contents/Sax-alto",
                 "Sax_tenor": "",
-                "Clarinete_na_regiao_aguda": ""
+                "Clarinete_na_regiao_aguda": "",
+                "Flautas": ""
             };
 
             /* ─── Range state ─────────────────────────────────────────── */
@@ -1219,7 +1222,7 @@
                     var name = 'Part ' + (idx + 1);
                     if (inst.NameLabel && inst.NameLabel.text) name = inst.NameLabel.text;
                     else if (inst.name) name = inst.name;
-                    var currentProg = document.getElementById('instSelect').value || 'violin';
+                    var currentProg = document.getElementById('instSelect').value || 'string_ensemble_1';
                     partConfigs.push({ name: name, program: currentProg, vol: 100, oct: 0 });
 
                     if (guideSelect) {
@@ -1682,7 +1685,7 @@
             }
 
             // GitHub Fetch Logic para Hinário
-            async function loadHymnList() {
+            async function loadHymnList(autoLoad = true) {
                 var folderKey = document.getElementById('folderSelect').value;
                 var select = document.getElementById('hymnSelect');
                 var fSelLoad = document.getElementById('hymnSelectFocus');
@@ -1731,6 +1734,10 @@
                     if (hinosEncontrados === 0) {
                         select.options[0].textContent = "⚠️ Nenhum XML na pasta";
                         if (fSelLoad) fSelLoad.options[0].textContent = "⚠️ Nenhum XML";
+                    } else if (autoLoad && select.options.length > 1) {
+                        // Carrega automaticamente o primeiro hino da lista ao mudar a pasta
+                        select.selectedIndex = 1;
+                        select.dispatchEvent(new Event('change'));
                     }
                 } catch (e) {
                     console.warn('Não foi possível carregar a lista de hinos:', e);
@@ -1742,7 +1749,7 @@
             document.getElementById('folderSelect').addEventListener('change', function() {
                 var fSelFocus = document.getElementById('folderSelectFocus');
                 if (fSelFocus) fSelFocus.value = this.value;
-                loadHymnList();
+                loadHymnList(true);
             });
 
             document.getElementById('folderSelectFocus').addEventListener('change', function() {
@@ -1913,7 +1920,7 @@
 
             // Inicializar o primeiro hino
             loadFromUrl('https://raw.githubusercontent.com/GlauberLASantiago/dedo-de-violinista/main/Violinos/001_1%C2%AAM_ad_Vln.mxl');
-            loadHymnList();
+            loadHymnList(false);
 
         })();
     </script>
