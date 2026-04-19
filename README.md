@@ -1,6 +1,9 @@
 # 🎼 HNC Treino
 
-Visualizador e reprodutor de partituras musicais no formato MusicXML, desenvolvido para músicos que desejam estudar e praticar peças diretamente no navegador.
+Visualizador e reprodutor de hinos do Hinário Novo Cântico, desenvolvido para músicos que desejam estudar e praticar peças diretamente no navegador.
+
+<img width="1482" height="893" alt="image" src="https://github.com/user-attachments/assets/4912b010-c6f0-4a51-99cd-742e9807cf42" />
+
 
 ## ✨ Funcionalidades
 
