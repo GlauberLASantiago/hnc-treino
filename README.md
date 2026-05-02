@@ -46,6 +46,4 @@ hnc-treino/
 └── README.md
 ```
 
-## 📄 Licença
 
-Este projeto é de uso interno do grupo HNC. Todos os direitos reservados.
